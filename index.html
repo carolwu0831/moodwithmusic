@@ -140,6 +140,9 @@
     .song-meta { margin-top: 7px; color: #8a8176; font-size: 11px; display: flex; gap: 7px; }
     audio { width: 100%; height: 30px; margin-top: 8px; }
     .music-link { display: inline-flex; margin-top: 8px; border: 1px solid #d7cabc; border-radius: 999px; padding: 5px 10px; color: #6f6257; text-decoration: none; font-size: 11px; letter-spacing: .08em; }
+    .listen-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .listen-row .music-link { margin-top: 0; }
+    .audio-note { margin-top: 5px; font-size: 10px; color: #9a9084; letter-spacing: .04em; }
     .hint { border: 1px solid #ddd4c8; background: rgba(251,248,241,.8); border-radius: 18px; padding: 20px; text-align: center; color: #70685e; font-size: 14px; line-height: 1.8; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -236,6 +239,7 @@
     function classifyWeather(code) { return [51,53,55,61,63,65,80,81,82,95].includes(code) ? "rainy" : [2,3,45,48].includes(code) ? "cloudy" : "sunny"; }
     function weatherIcon(type) { return type === "rainy" ? "☔" : type === "sunny" ? "☀" : "☁"; }
     function musicSearchUrl(song) { return `https://music.apple.com/search?term=${encodeURIComponent(song.title + " " + song.artist)}`; }
+    function youtubeSearchUrl(song) { return `https://www.youtube.com/results?search_query=${encodeURIComponent(song.title + " " + song.artist + " official audio")}`; }
     function albumFallbackSvg(song) {
       const initials = (song.title || "♪").slice(0, 2);
       const hash = comboHash(song.title + song.artist);
@@ -276,11 +280,39 @@
       return picked;
     }
     async function fetchMeta(song) {
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song.title + " " + song.artist)}&media=music&entity=song&limit=1`);
-        const data = await res.json(); const item = data.results?.[0];
-        return item ? { art:item.artworkUrl100?.replace('100x100bb','600x600bb'), preview:item.previewUrl, link:item.trackViewUrl } : {};
-      } catch { return {}; }
+      const queries = [
+        `${song.title} ${song.artist}`,
+        song.title,
+        song.artist
+      ];
+      const countries = ['TW', 'US'];
+
+      for (const country of countries) {
+        for (const query of queries) {
+          try {
+            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=8&country=${country}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const results = data.results || [];
+            if (!results.length) continue;
+
+            const lowerTitle = song.title.toLowerCase();
+            const lowerArtist = song.artist.toLowerCase();
+            const best =
+              results.find(item => item.previewUrl && item.trackName?.toLowerCase().includes(lowerTitle)) ||
+              results.find(item => item.previewUrl && lowerArtist.includes((item.artistName || '').toLowerCase().split(' ')[0])) ||
+              results.find(item => item.previewUrl) ||
+              results[0];
+
+            return {
+              art: best.artworkUrl100?.replace('100x100bb','300x300bb'),
+              preview: best.previewUrl,
+              link: best.trackViewUrl
+            };
+          } catch {}
+        }
+      }
+      return {};
     }
     async function renderRecommendations() {
       imageSeed += comboHash(`${selectedGenre}-${selectedMood}-${weatherType}`) % 53 + 7;
@@ -294,11 +326,85 @@
       resultArea.innerHTML = `<p class='caption'>${moodCaptions[selectedMood]}</p>`;
       for (const [i, song] of songs.entries()) {
         const meta = await fetchMeta(song);
-        const artSrc = meta.art || albumFallbackSvg(song);
         const div = document.createElement('article');
         div.className = 'song-card';
         div.style.animationDelay = `${i*.08}s`;
-        div.innerHTML = `<img class='art' src='${artSrc}' alt='album' referrerpolicy='no-referrer' onerror="this.onerror=null;this.src='${albumFallbackSvg(song)}'"><div><p class='song-title'>${song.title}</p><p class='song-artist'>${song.artist}</p><div class='song-meta'><span>${song.lang}</span><span>·</span><span>${song.duration}</span></div>${meta.preview ? `<audio controls preload='none' src='${meta.preview}'></audio>` : `<a class='music-link' href='${meta.link || musicSearchUrl(song)}' target='_blank'>開啟音樂搜尋</a>`}</div>`;
+
+        const coverBox = document.createElement('div');
+        coverBox.className = 'art-fallback';
+        coverBox.textContent = '♪';
+
+        if (meta.art) {
+          const img = document.createElement('img');
+          img.className = 'art';
+          img.alt = `${song.title} album cover`;
+          img.referrerPolicy = 'no-referrer';
+          img.src = meta.art;
+          img.onerror = () => {
+            img.replaceWith(coverBox);
+          };
+          div.appendChild(img);
+        } else {
+          div.appendChild(coverBox);
+        }
+
+        const info = document.createElement('div');
+        const title = document.createElement('p');
+        title.className = 'song-title';
+        title.textContent = song.title;
+        const artist = document.createElement('p');
+        artist.className = 'song-artist';
+        artist.textContent = song.artist;
+        const metaLine = document.createElement('div');
+        metaLine.className = 'song-meta';
+        metaLine.innerHTML = `<span>${song.lang}</span><span>·</span><span>${song.duration}</span>`;
+
+        info.appendChild(title);
+        info.appendChild(artist);
+        info.appendChild(metaLine);
+
+        const listenRow = document.createElement('div');
+        listenRow.className = 'listen-row';
+
+        if (meta.preview) {
+          const audio = document.createElement('audio');
+          audio.controls = true;
+          audio.preload = 'none';
+          audio.src = meta.preview;
+          audio.addEventListener('error', () => {
+            audio.remove();
+            const note = document.createElement('div');
+            note.className = 'audio-note';
+            note.textContent = '此歌曲試聽檔暫時無法播放，請用下方連結開啟。';
+            info.appendChild(note);
+          });
+          info.appendChild(audio);
+        } else {
+          const note = document.createElement('div');
+          note.className = 'audio-note';
+          note.textContent = '這首歌沒有可嵌入的試聽檔。';
+          info.appendChild(note);
+        }
+
+        const appleLink = document.createElement('a');
+        appleLink.className = 'music-link';
+        appleLink.href = meta.link || musicSearchUrl(song);
+        appleLink.target = '_blank';
+        appleLink.rel = 'noreferrer';
+        appleLink.textContent = 'Apple Music';
+        listenRow.appendChild(appleLink);
+
+        const youtubeLink = document.createElement('a');
+        youtubeLink.className = 'music-link';
+        youtubeLink.href = youtubeSearchUrl(song);
+        youtubeLink.target = '_blank';
+        youtubeLink.rel = 'noreferrer';
+        youtubeLink.textContent = 'YouTube 試聽';
+        listenRow.appendChild(youtubeLink);
+
+        info.appendChild(listenRow);
+
+        div.appendChild(info);
         resultArea.appendChild(div);
       }
     }
