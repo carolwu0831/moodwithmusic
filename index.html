@@ -201,8 +201,59 @@
     const genres = ["All", "Indie / 文青", "Lo-fi / Chill", "華語流行", "英文流行", "R&B 靈魂", "嘻哈", "搖滾", "Jazz", "夜晚感", "Emo", "Acoustic / 民謠"];
     const genreAliases = {
       "Indie / 文青": ["Indie"], "Lo-fi / Chill": ["Lo-fi"], "華語流行": ["Mandopop"], "英文流行": ["Pop"], "R&B 靈魂": ["R&B"],
-      "嘻哈": ["Hip Hop"], "搖滾": ["Rock"], "Jazz": ["Jazz"], "夜晚感": ["Lo-fi", "R&B", "Indie"], "Emo": ["Rock", "Indie", "Mandopop"], "Acoustic / 民謠": ["Acoustic", "Indie", "Mandopop"]
+      "嘻哈": ["Hip Hop"], "搖滾": ["Rock"], "Jazz": ["Jazz"], "夜晚感": ["Night", "Lo-fi", "R&B", "Indie", "Dream Pop", "Bedroom Pop"], "Emo": ["Emo", "Rock", "Indie Rock", "Post-Rock", "Mandopop"], "Acoustic / 民謠": ["Acoustic", "Folk", "Indie Folk", "Indie", "Mandopop"]
     };
+
+    const onlineGenreDescriptions = {
+      "The Night We Met|Lord Huron": "indie folk, indie rock, folk rock, atmospheric ballad",
+      "好不容易|告五人": "mandopop, indie pop, pop rock, emotional ballad",
+      "I Like Me Better|Lauv": "electropop, dance pop, pop, contemporary pop",
+      "慢冷|梁靜茹": "mandopop, chinese pop, ballad, adult contemporary",
+      "大風吹|草東沒有派對": "indie rock, alternative rock, post-punk, taiwan indie",
+      "Pink + White|Frank Ocean": "alternative r&b, neo soul, psychedelic soul",
+      "關於小熊|蛋堡": "taiwan hip hop, jazz rap, chill hip hop, lo-fi hip hop",
+      "魚仔|盧廣仲": "mandopop, indie folk, acoustic pop, taiwan indie",
+      "Older|Sasha Alex Sloan": "pop, singer-songwriter, indie pop, piano ballad",
+      "Rollin' On|椅子樂團": "indie pop, soft rock, city pop, taiwan indie",
+      "輕輕|陳嫻靜": "alternative r&b, taiwan hip hop, neo soul, lo-fi",
+      "Leave The Door Open|Bruno Mars, Anderson .Paak, Silk Sonic": "r&b, soul, funk, smooth soul",
+      "Ghost|Justin Bieber": "pop, synth pop, dance pop, contemporary pop",
+      "Attention|Charlie Puth": "pop funk, pop, dance pop",
+      "Day 1 ◑|HONNE": "electronic soul, synth pop, alternative r&b, chill pop",
+      "蝴蝶|事後菸樂團": "dream pop, shoegaze, indie rock, alternative rock",
+      "夢裡的你|PAMI": "lo-fi pop, bedroom pop, r&b, indie pop",
+      "愛愛愛|方大同": "mandopop, r&b, soul, chinese r&b",
+      "新世紀的女兒|鄭宜農": "taiwan indie, indie rock, mandopop, singer-songwriter",
+      "旅行的意義|陳綺貞": "mandopop, indie folk, acoustic pop, singer-songwriter",
+      "Fly Me to the Moon|Frank Sinatra": "traditional pop, vocal jazz, swing, jazz standard",
+      "Nujabes - Feather|Nujabes": "jazz rap, instrumental hip hop, lo-fi hip hop, chillhop"
+    };
+
+    function classifyGenresFromDescription(description, song) {
+      const text = `${description || ""} ${(song.title || "").toLowerCase()} ${(song.artist || "").toLowerCase()}`.toLowerCase();
+      const tags = new Set();
+      const rules = [
+        { tag: "Jazz", words: ["jazz", "swing", "jazz standard", "vocal jazz"] },
+        { tag: "Hip Hop", words: ["hip hop", "rap", "jazz rap", "chillhop"] },
+        { tag: "Lo-fi", words: ["lo-fi", "lofi", "chillhop", "bedroom pop", "chill hip hop"] },
+        { tag: "R&B", words: ["r&b", "soul", "neo soul", "alternative r&b", "funk"] },
+        { tag: "Rock", words: ["rock", "post-punk", "alternative rock", "soft rock", "indie rock", "post-rock"] },
+        { tag: "Indie", words: ["indie", "singer-songwriter", "bedroom pop", "dream pop", "shoegaze"] },
+        { tag: "Mandopop", words: ["mandopop", "chinese pop", "taiwan", "華語"] },
+        { tag: "Pop", words: ["pop", "electropop", "synth pop", "dance pop", "traditional pop"] },
+        { tag: "Acoustic", words: ["acoustic", "folk", "indie folk", "folk rock", "ballad", "singer-songwriter"] },
+        { tag: "Night", words: ["dream pop", "shoegaze", "alternative r&b", "lo-fi", "bedroom pop", "atmospheric", "chill"] },
+        { tag: "Emo", words: ["post-punk", "alternative rock", "indie rock", "emotional", "shoegaze", "ballad"] }
+      ];
+      rules.forEach(rule => { if (rule.words.some(word => text.includes(word))) tags.add(rule.tag); });
+      if (tags.size === 0) (song.genres || []).forEach(genre => tags.add(genre));
+      return [...tags];
+    }
+
+    function getSongGenres(song) {
+      const key = `${song.title}|${song.artist}`;
+      return classifyGenresFromDescription(onlineGenreDescriptions[key], song);
+    }
     const moodCaptions = {
       平靜: "今天不用急著奔跑，慢慢聽也很好。", 放鬆: "讓聲音變得柔軟，替你把日子放慢。", 開心: "適合把音量調高一點，讓心情往外擴散。",
       難過: "有些歌不是為了振作，是為了陪你待一會。", 疲憊: "今天已經夠努力了，剩下的交給音樂。", 無感: "有時候不是快樂或悲傷，只是靜靜地經過一天。",
@@ -333,15 +384,19 @@
       const mapped = genreAliases[selectedGenre] || [selectedGenre];
       const hash = comboHash(`${selectedGenre}-${selectedMood}-${weatherType}-${imageSeed}`);
       const ranked = songLibrary.map((s,i)=>{
+        const inferredGenres = getSongGenres(s);
         let score = 0;
         if (selectedGenre === "All") score += 2;
-        if (mapped.some(g => s.genres.includes(g))) score += 10;
+        if (mapped.some(g => inferredGenres.includes(g))) score += 12;
         if (s.moods.includes(selectedMood)) score += 9;
         if (s.weather.includes(weatherType)) score += 4;
         if (s.lang === "中文") score += .35;
         score += ((hash + i * 73) % 1000) / 100;
         return {...s, score};
-      }).filter(s => selectedGenre === "All" || mapped.some(g => s.genres.includes(g)) || s.moods.includes(selectedMood)).sort((a,b)=>b.score-a.score);
+      }).filter(s => {
+        const inferredGenres = getSongGenres(s);
+        return selectedGenre === "All" || mapped.some(g => inferredGenres.includes(g)) || s.moods.includes(selectedMood);
+      }).sort((a,b)=>b.score-a.score);
       const picked=[], artists=new Set();
       for (const s of ranked) { if (picked.length===3) break; if (artists.has(s.artist)) continue; picked.push(s); artists.add(s.artist); }
       return picked;
