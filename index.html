@@ -240,12 +240,79 @@
     function weatherIcon(type) { return type === "rainy" ? "☔" : type === "sunny" ? "☀" : "☁"; }
     function musicSearchUrl(song) { return `https://music.apple.com/search?term=${encodeURIComponent(song.title + " " + song.artist)}`; }
     function youtubeSearchUrl(song) { return `https://www.youtube.com/results?search_query=${encodeURIComponent(song.title + " " + song.artist + " official audio")}`; }
-    function albumFallbackSvg(song) {
-      const initials = (song.title || "♪").slice(0, 2);
-      const hash = comboHash(song.title + song.artist);
-      const hueA = 28 + (hash % 26);
-      const hueB = 205 + (hash % 35);
-      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='hsl(${hueA},45%,76%)'/><stop offset='.55' stop-color='#f7efe2'/><stop offset='1' stop-color='hsl(${hueB},22%,45%)'/></linearGradient><filter id='n'><feTurbulence baseFrequency='.8' numOctaves='3' seed='${hash}'/><feComponentTransfer><feFuncA type='table' tableValues='0 .16'/></feComponentTransfer></filter></defs><rect width='120' height='120' rx='16' fill='url(#g)'/><circle cx='84' cy='34' r='26' fill='#fff4df' opacity='.28'/><path d='M0 84 C25 64 45 92 72 72 C94 56 102 78 120 62 L120 120 L0 120 Z' fill='#3f4938' opacity='.35'/><text x='60' y='68' text-anchor='middle' dominant-baseline='middle' font-family='system-ui, sans-serif' font-size='24' fill='#4f463b' opacity='.75'>${initials}</text><rect width='120' height='120' filter='url(#n)'/></svg>`;
+    function generatedAlbumCover(song) {
+      const coverStyles = {
+        "The Night We Met": { bg: "#243040", fg: "#d9c8ae", accent: "#8fa0aa", type: "night", text: "NIGHT" },
+        "好不容易": { bg: "#d8c9ae", fg: "#334536", accent: "#8b6f4e", type: "lake", text: "EASY" },
+        "I Like Me Better": { bg: "#b24a32", fg: "#f4d9b9", accent: "#1d2630", type: "portrait", text: "LIKE" },
+        "慢冷": { bg: "#b8aca4", fg: "#fff1e1", accent: "#4b3d39", type: "soft", text: "COLD" },
+        "大風吹": { bg: "#1f1f1f", fg: "#d9d1c4", accent: "#a6422f", type: "rock", text: "WIND" },
+        "Pink + White": { bg: "#f1d7d8", fg: "#ffffff", accent: "#9c7f75", type: "minimal", text: "P+W" },
+        "關於小熊": { bg: "#e9d4a8", fg: "#5d4632", accent: "#2c594c", type: "doodle", text: "BEAR" },
+        "魚仔": { bg: "#c7d9d5", fg: "#2f4e58", accent: "#e7c576", type: "water", text: "FISH" },
+        "Older": { bg: "#cdb9aa", fg: "#f7efe2", accent: "#705f59", type: "soft", text: "OLDER" },
+        "Rollin' On": { bg: "#e4d5b8", fg: "#2c4736", accent: "#cc8e44", type: "retro", text: "ROLL" },
+        "輕輕": { bg: "#d8cfc5", fg: "#fff8ec", accent: "#705a63", type: "minimal", text: "SOFT" },
+        "Leave The Door Open": { bg: "#7a2630", fg: "#f4d49a", accent: "#111111", type: "silk", text: "OPEN" },
+        "Ghost": { bg: "#d7dbe0", fg: "#ffffff", accent: "#6c7580", type: "mist", text: "GHOST" },
+        "Attention": { bg: "#1d2b2c", fg: "#f7efe2", accent: "#d1a251", type: "pop", text: "ATTN" },
+        "Day 1 ◑": { bg: "#161719", fg: "#e8d2a4", accent: "#d88c38", type: "honne", text: "DAY 1" },
+        "蝴蝶": { bg: "#2c2a28", fg: "#dfd5c4", accent: "#b08a65", type: "blur", text: "BUTTER" },
+        "夢裡的你": { bg: "#c9b8d6", fg: "#fff3e5", accent: "#6f5d7a", type: "dream", text: "DREAM" },
+        "愛愛愛": { bg: "#f0c56f", fg: "#442f26", accent: "#cf5a3b", type: "soul", text: "LOVE" },
+        "新世紀的女兒": { bg: "#d5d0c2", fg: "#242424", accent: "#8c5f49", type: "editorial", text: "NEW" },
+        "旅行的意義": { bg: "#e7d7c2", fg: "#5a4b40", accent: "#8da08b", type: "travel", text: "TRIP" },
+        "Fly Me to the Moon": { bg: "#1c2430", fg: "#efe2c8", accent: "#c4a35a", type: "jazz", text: "MOON" },
+        "Nujabes - Feather": { bg: "#d9c79f", fg: "#4d5c63", accent: "#f4efe4", type: "lofi", text: "FEATHER" },
+      };
+
+      const style = coverStyles[song.title] || {
+        bg: "#e5d7c4",
+        fg: "#43392f",
+        accent: "#8d765f",
+        type: "default",
+        text: song.title.slice(0, 6).toUpperCase(),
+      };
+      const seed = comboHash(song.title + song.artist + style.type);
+      const safeTitle = song.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").slice(0, 18);
+      const safeArtist = song.artist.replace(/&/g, "&amp;").replace(/</g, "&lt;").slice(0, 18);
+
+      const motifs = {
+        night: `<circle cx='70' cy='42' r='24' fill='${style.accent}' opacity='.35'/><path d='M18 86 C42 62 70 78 102 52' stroke='${style.fg}' stroke-width='5' fill='none' opacity='.55'/>`,
+        lake: `<rect y='66' width='120' height='34' fill='${style.accent}' opacity='.45'/><path d='M8 78 C28 70 42 84 62 76 C82 68 94 82 116 74' stroke='${style.fg}' stroke-width='3' fill='none' opacity='.8'/>`,
+        portrait: `<circle cx='62' cy='38' r='18' fill='${style.accent}' opacity='.85'/><path d='M34 102 C42 72 82 72 90 102' fill='${style.fg}' opacity='.85'/>`,
+        soft: `<circle cx='38' cy='42' r='30' fill='${style.fg}' opacity='.28'/><circle cx='82' cy='74' r='34' fill='${style.accent}' opacity='.24'/>`,
+        rock: `<path d='M20 100 L50 16 L58 62 L86 18 L72 104 Z' fill='${style.accent}' opacity='.55'/><rect x='30' y='78' width='62' height='7' fill='${style.fg}'/>`,
+        minimal: `<rect x='26' y='25' width='68' height='68' rx='4' fill='none' stroke='${style.fg}' stroke-width='4'/><circle cx='60' cy='59' r='18' fill='${style.accent}' opacity='.32'/>`,
+        doodle: `<circle cx='60' cy='52' r='22' fill='none' stroke='${style.fg}' stroke-width='4'/><circle cx='45' cy='35' r='9' fill='${style.fg}'/><circle cx='75' cy='35' r='9' fill='${style.fg}'/>`,
+        water: `<path d='M0 78 C26 62 44 90 70 72 C92 56 104 74 120 62 L120 120 L0 120 Z' fill='${style.accent}' opacity='.62'/><path d='M32 52 C45 38 72 38 85 52 C72 66 45 66 32 52 Z' fill='${style.fg}' opacity='.75'/>`,
+        retro: `<circle cx='60' cy='60' r='42' fill='${style.accent}' opacity='.35'/><path d='M22 76 H98' stroke='${style.fg}' stroke-width='5'/><path d='M34 44 H86' stroke='${style.fg}' stroke-width='5'/>`,
+        silk: `<rect x='0' y='0' width='48' height='120' fill='${style.accent}' opacity='.9'/><path d='M62 20 C96 28 84 70 110 96' stroke='${style.fg}' stroke-width='10' fill='none' opacity='.75'/>`,
+        mist: `<circle cx='62' cy='55' r='36' fill='${style.fg}' opacity='.42'/><path d='M10 92 C38 82 58 96 110 84' stroke='${style.accent}' stroke-width='6' fill='none' opacity='.55'/>`,
+        pop: `<path d='M60 18 L72 48 L104 48 L78 66 L88 98 L60 78 L32 98 L42 66 L16 48 L48 48 Z' fill='${style.accent}' opacity='.75'/>`,
+        honne: `<rect x='16' y='18' width='88' height='84' fill='${style.bg}' stroke='${style.accent}' stroke-width='5'/><path d='M22 86 C50 46 78 112 104 56' stroke='${style.fg}' stroke-width='6' fill='none'/>`,
+        blur: `<rect width='120' height='120' fill='${style.accent}' opacity='.2'/><circle cx='44' cy='45' r='34' fill='${style.fg}' opacity='.18'/><circle cx='82' cy='72' r='42' fill='${style.accent}' opacity='.22'/>`,
+        dream: `<path d='M20 78 C38 30 82 30 100 78 C74 62 46 62 20 78 Z' fill='${style.fg}' opacity='.45'/><circle cx='76' cy='38' r='10' fill='${style.accent}'/>`,
+        soul: `<circle cx='60' cy='60' r='36' fill='${style.accent}' opacity='.55'/><path d='M44 58 C44 42 76 42 76 58 C76 76 60 82 60 82 C60 82 44 76 44 58 Z' fill='${style.fg}' opacity='.8'/>`,
+        editorial: `<rect x='18' y='18' width='84' height='84' fill='none' stroke='${style.fg}' stroke-width='2'/><path d='M32 88 C44 34 76 34 88 88' fill='${style.accent}' opacity='.5'/>`,
+        travel: `<path d='M18 82 C38 34 82 34 102 82' fill='none' stroke='${style.fg}' stroke-width='5'/><circle cx='60' cy='82' r='20' fill='${style.accent}' opacity='.45'/>`,
+        jazz: `<circle cx='60' cy='55' r='38' fill='${style.accent}' opacity='.36'/><path d='M46 88 C64 78 68 55 66 30' stroke='${style.fg}' stroke-width='7' fill='none'/><circle cx='66' cy='30' r='8' fill='${style.fg}'/>`,
+        lofi: `<path d='M18 74 C48 18 72 18 102 74' fill='none' stroke='${style.fg}' stroke-width='4'/><path d='M24 80 C44 68 76 68 96 80' stroke='${style.accent}' stroke-width='8' fill='none'/>`,
+        default: `<circle cx='60' cy='60' r='38' fill='${style.accent}' opacity='.36'/><path d='M38 78 C52 56 68 56 82 78' stroke='${style.fg}' stroke-width='5' fill='none'/>`,
+      }[style.type] || "";
+
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'>
+        <defs>
+          <filter id='grain'><feTurbulence baseFrequency='.85' numOctaves='3' seed='${seed}'/><feComponentTransfer><feFuncA type='table' tableValues='0 .14'/></feComponentTransfer></filter>
+          <linearGradient id='paper' x1='0' y1='0' x2='1' y2='1'><stop stop-color='${style.bg}'/><stop offset='.7' stop-color='#f6efe4'/><stop offset='1' stop-color='${style.accent}' stop-opacity='.7'/></linearGradient>
+        </defs>
+        <rect width='120' height='120' rx='14' fill='url(#paper)'/>
+        ${motifs}
+        <rect x='8' y='8' width='104' height='104' rx='10' fill='none' stroke='${style.fg}' stroke-opacity='.18'/>
+        <text x='60' y='101' text-anchor='middle' font-family='system-ui, sans-serif' font-size='9' font-weight='600' fill='${style.fg}' opacity='.78'>${safeTitle}</text>
+        <text x='60' y='112' text-anchor='middle' font-family='system-ui, sans-serif' font-size='6.5' fill='${style.fg}' opacity='.5'>${safeArtist}</text>
+        <rect width='120' height='120' filter='url(#grain)'/>
+      </svg>`;
       return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     }
     function generatedSceneUrl(type, mood, genre, seed) {
@@ -330,23 +397,11 @@
         div.className = 'song-card';
         div.style.animationDelay = `${i*.08}s`;
 
-        const coverBox = document.createElement('div');
-        coverBox.className = 'art-fallback';
-        coverBox.textContent = '♪';
-
-        if (meta.art) {
-          const img = document.createElement('img');
-          img.className = 'art';
-          img.alt = `${song.title} album cover`;
-          img.referrerPolicy = 'no-referrer';
-          img.src = meta.art;
-          img.onerror = () => {
-            img.replaceWith(coverBox);
-          };
-          div.appendChild(img);
-        } else {
-          div.appendChild(coverBox);
-        }
+        const img = document.createElement('img');
+        img.className = 'art';
+        img.alt = `${song.title} generated album-style cover`;
+        img.src = generatedAlbumCover(song);
+        div.appendChild(img);
 
         const info = document.createElement('div');
         const title = document.createElement('p');
