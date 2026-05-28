@@ -7,6 +7,7 @@
   <style>
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
+    body.no-scroll { overflow: hidden; }
     body {
       margin: 0;
       background: #eee8dc;
@@ -23,6 +24,8 @@
       box-shadow: 0 20px 60px rgba(70, 55, 35, 0.16);
     }
     section { padding: 28px 20px 40px; }
+    .page { min-height: 100vh; }
+    .hidden { display: none !important; }
     .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
     .hamburger { display: grid; gap: 6px; }
     .hamburger span { display: block; width: 22px; height: 1.5px; background: #232323; }
@@ -91,7 +94,7 @@
       font-size: 16px; letter-spacing: .2em;
       cursor: pointer;
     }
-    .result-section { position: relative; min-height: 88vh; padding-bottom: 48px; }
+    .result-section { position: relative; min-height: 100vh; padding-bottom: 48px; }
     .result-bg { position: absolute; left: 0; right: 0; bottom: 0; height: 380px; overflow: hidden; }
     .result-bg img { width: 100%; height: 100%; object-fit: cover; opacity: .9; filter: saturate(.82) sepia(.16); }
     .result-bg::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 210px; background: linear-gradient(#f6f1e8, rgba(246,241,232,.8), transparent); }
@@ -109,6 +112,29 @@
       animation: fadeUp .45s ease both;
     }
     .art { width: 56px; height: 56px; border-radius: 9px; object-fit: cover; background: #ddd4c8; }
+    .art-fallback {
+      width: 56px;
+      height: 56px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #ddd4c8, #f7efe2 52%, #b7a58e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6f6257;
+      font-size: 22px;
+    }
+    .back-btn {
+      border: 1px solid #d7cabc;
+      background: rgba(251,248,241,.85);
+      color: #5f554b;
+      border-radius: 999px;
+      padding: 8px 14px;
+      margin-bottom: 18px;
+      font: inherit;
+      font-size: 13px;
+      letter-spacing: .08em;
+      cursor: pointer;
+    }
     .song-title { margin: 0; font-size: 17px; font-weight: 500; color: #242424; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .song-artist { margin: 4px 0 0; font-size: 13px; color: #5f5a52; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .song-meta { margin-top: 7px; color: #8a8176; font-size: 11px; display: flex; gap: 7px; }
@@ -120,6 +146,7 @@
 </head>
 <body>
   <main class="phone">
+    <div id="homePage" class="page">
     <section>
       <div class="topbar">
         <div class="hamburger"><span></span><span></span></div>
@@ -153,9 +180,12 @@
       <button class="recommend-btn" id="recommendBtn">為我推薦 →</button>
     </section>
 
-    <section class="result-section" id="resultSection">
+    </div>
+
+    <section class="result-section page hidden" id="resultSection">
       <div class="result-bg"><img id="resultImage" alt="推薦情境照" /></div>
       <div class="result-content">
+        <button class="back-btn" id="backBtn">← 重新選擇</button>
         <h2 class="section-title">為你推薦的歌曲</h2>
         <div id="resultArea" class="hint">選好心情與音樂類型後，按下「為我推薦」會直接跳到這裡。</div>
       </div>
@@ -206,6 +236,14 @@
     function classifyWeather(code) { return [51,53,55,61,63,65,80,81,82,95].includes(code) ? "rainy" : [2,3,45,48].includes(code) ? "cloudy" : "sunny"; }
     function weatherIcon(type) { return type === "rainy" ? "☔" : type === "sunny" ? "☀" : "☁"; }
     function musicSearchUrl(song) { return `https://music.apple.com/search?term=${encodeURIComponent(song.title + " " + song.artist)}`; }
+    function albumFallbackSvg(song) {
+      const initials = (song.title || "♪").slice(0, 2);
+      const hash = comboHash(song.title + song.artist);
+      const hueA = 28 + (hash % 26);
+      const hueB = 205 + (hash % 35);
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='hsl(${hueA},45%,76%)'/><stop offset='.55' stop-color='#f7efe2'/><stop offset='1' stop-color='hsl(${hueB},22%,45%)'/></linearGradient><filter id='n'><feTurbulence baseFrequency='.8' numOctaves='3' seed='${hash}'/><feComponentTransfer><feFuncA type='table' tableValues='0 .16'/></feComponentTransfer></filter></defs><rect width='120' height='120' rx='16' fill='url(#g)'/><circle cx='84' cy='34' r='26' fill='#fff4df' opacity='.28'/><path d='M0 84 C25 64 45 92 72 72 C94 56 102 78 120 62 L120 120 L0 120 Z' fill='#3f4938' opacity='.35'/><text x='60' y='68' text-anchor='middle' dominant-baseline='middle' font-family='system-ui, sans-serif' font-size='24' fill='#4f463b' opacity='.75'>${initials}</text><rect width='120' height='120' filter='url(#n)'/></svg>`;
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    }
     function generatedSceneUrl(type, mood, genre, seed) {
       const p = { sunny:["#f8f0df","#4f5636","#8d7a55","#f6d58a"], cloudy:["#f6f1e8","#3f4938","#786f5c","#d5c4b2"], rainy:["#f0ece4","#334038","#5f625b","#c9c1b6"] }[type];
       const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 1400'><filter id='g'><feTurbulence baseFrequency='.9' numOctaves='4' seed='${seed}'/><feComponentTransfer><feFuncA type='table' tableValues='0 .16'/></feComponentTransfer></filter><rect width='900' height='1400' fill='${p[0]}'/><circle cx='220' cy='180' r='430' fill='${p[3]}' opacity='.35'/><path d='M0 430 C120 330 200 430 310 340 C430 240 520 400 640 310 C760 230 820 360 900 300 L900 680 L0 680 Z' fill='${p[1]}'/><rect y='650' width='900' height='360' fill='${p[2]}'/><path d='M0 990 C160 930 320 980 450 945 C610 905 735 960 900 905 L900 1400 L0 1400 Z' fill='#ead9bd'/><g transform='translate(500 905)'><ellipse cx='0' cy='100' rx='185' ry='28' fill='#8a7659' opacity='.2'/><g transform='translate(-35 0)'><circle r='28' fill='#2b2825'/><path d='M-30 33 C-50 80 -35 127 -8 150 C20 124 30 80 16 34 Z' fill='#8c5f49'/></g><g transform='translate(55 -16)'><circle r='31' fill='#4b3728'/><path d='M-24 38 C-42 91 -18 139 23 154 C57 118 64 71 31 34 Z' fill='#2d3551'/></g></g><text x='86' y='795' transform='rotate(90 86 795)' font-family='monospace' font-size='34' fill='#d86f2e' opacity='.72'>22 06 25</text><text x='64' y='1320' font-family='system-ui' font-size='28' fill='#7d6e5e' opacity='.35'>${mood} · ${genre}</text><rect width='900' height='1400' filter='url(#g)' opacity='.42'/></svg>`;
@@ -248,15 +286,21 @@
       imageSeed += comboHash(`${selectedGenre}-${selectedMood}-${weatherType}`) % 53 + 7;
       renderScene();
       const songs = getRecommendations();
+      homePage.classList.add('hidden');
+      resultSection.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'auto' });
       resultArea.className = 'songs';
+      resultArea.innerHTML = `<p class='caption'>${moodCaptions[selectedMood]}</p><div class='hint'>正在整理推薦歌曲...</div>`;
       resultArea.innerHTML = `<p class='caption'>${moodCaptions[selectedMood]}</p>`;
       for (const [i, song] of songs.entries()) {
         const meta = await fetchMeta(song);
-        const div = document.createElement('article'); div.className = 'song-card'; div.style.animationDelay = `${i*.08}s`;
-        div.innerHTML = `<img class='art' src='${meta.art || generatedSceneUrl(weatherType, selectedMood, selectedGenre, imageSeed)}' alt='album'><div><p class='song-title'>${song.title}</p><p class='song-artist'>${song.artist}</p><div class='song-meta'><span>${song.lang}</span><span>·</span><span>${song.duration}</span></div>${meta.preview ? `<audio controls src='${meta.preview}'></audio>` : `<a class='music-link' href='${meta.link || musicSearchUrl(song)}' target='_blank'>開啟音樂搜尋</a>`}</div>`;
+        const artSrc = meta.art || albumFallbackSvg(song);
+        const div = document.createElement('article');
+        div.className = 'song-card';
+        div.style.animationDelay = `${i*.08}s`;
+        div.innerHTML = `<img class='art' src='${artSrc}' alt='album' referrerpolicy='no-referrer' onerror="this.onerror=null;this.src='${albumFallbackSvg(song)}'"><div><p class='song-title'>${song.title}</p><p class='song-artist'>${song.artist}</p><div class='song-meta'><span>${song.lang}</span><span>·</span><span>${song.duration}</span></div>${meta.preview ? `<audio controls preload='none' src='${meta.preview}'></audio>` : `<a class='music-link' href='${meta.link || musicSearchUrl(song)}' target='_blank'>開啟音樂搜尋</a>`}</div>`;
         resultArea.appendChild(div);
       }
-      resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     async function fetchWeather() {
       try {
@@ -265,7 +309,12 @@
         weatherType = classifyWeather(w.weather_code); temp.textContent = Math.round(w.temperature_2m) + '°'; weatherIcon.textContent = window.weatherIcon(weatherType); weatherText.textContent = weatherCodeMap[w.weather_code] || '天氣資訊'; feels.textContent = '體感 ' + Math.round(w.apparent_temperature) + '°C'; humidity.textContent = w.relative_humidity_2m + '%'; wind.textContent = w.wind_speed_10m; rain.textContent = w.precipitation + ' mm'; renderScene();
       } catch { temp.textContent = '27°'; weatherText.textContent = '多雲時陰'; feels.textContent = '體感 29°C'; humidity.textContent = '78%'; wind.textContent = '9'; rain.textContent = '0 mm'; }
     }
-    renderChoices(); renderScene(); fetchWeather(); recommendBtn.onclick = renderRecommendations;
+    function goHome() {
+      resultSection.classList.add('hidden');
+      homePage.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    renderChoices(); renderScene(); fetchWeather(); recommendBtn.onclick = renderRecommendations; backBtn.onclick = goHome;
   </script>
 </body>
 </html>
