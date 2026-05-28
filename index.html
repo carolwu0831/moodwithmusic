@@ -46,6 +46,17 @@
     .weather-icon { font-size: 52px; line-height: 1; }
     .weather-title { font-size: 20px; letter-spacing: .25em; font-weight: 500; margin: 0; }
     .feels { margin: 16px 0 0; font-size: 15px; letter-spacing: .12em; color: #57534c; }
+    .time-chip {
+      display: inline-flex;
+      margin-top: 12px;
+      border: 1px solid rgba(35,35,35,.12);
+      border-radius: 999px;
+      padding: 5px 11px;
+      background: rgba(250,247,240,.55);
+      color: #6b6258;
+      font-size: 12px;
+      letter-spacing: .12em;
+    }
     .stats { margin-top: 40px; width: 176px; display: grid; gap: 15px; color: #4f4a43; font-size: 15px; letter-spacing: .06em; }
     .stat { display: flex; justify-content: space-between; align-items: center; }
     .stat span:first-child { display: inline-flex; align-items: center; gap: 10px; }
@@ -163,6 +174,7 @@
           <div class="temp-row"><div class="temp" id="temp">--°</div><div class="weather-icon" id="weatherIcon">☁</div></div>
           <h1 class="weather-title" id="weatherText">讀取中</h1>
           <p class="feels" id="feels">體感 --°C</p>
+          <div class="time-chip" id="timeChip">午後氛圍</div>
           <div class="stats">
             <div class="stat"><span>♧ 濕度</span><span id="humidity">--%</span></div>
             <div class="stat"><span>≋ 風速</span><span id="wind">--</span></div>
@@ -387,11 +399,11 @@ const songLibrary = [
         rainy: { tree: "#334038", lake: "#5f625b", sand: "#d2c7b9", stamp: "#a7644b" }
       }[type];
       const timePalette = {
-        dawn: { sky: "#f5dfcf", glow: "#f3b98f", overlay: "#f7efe5", opacity: ".42", sunX: "170", sunY: "170", label: "DAWN" },
-        morning: { sky: "#f8f0df", glow: "#f6d58a", overlay: "#fff6e8", opacity: ".35", sunX: "230", sunY: "145", label: "MORNING" },
-        afternoon: { sky: "#f6f1e8", glow: "#e9c875", overlay: "#f7ead2", opacity: ".30", sunX: "270", sunY: "185", label: "AFTERNOON" },
-        sunset: { sky: "#ead0b0", glow: "#d88453", overlay: "#f1c08d", opacity: ".48", sunX: "170", sunY: "360", label: "SUNSET" },
-        night: { sky: "#202731", glow: "#747d93", overlay: "#c7c3b7", opacity: ".22", sunX: "720", sunY: "160", label: "NIGHT" }
+        dawn: { sky: "#f2cfc2", glow: "#ff9f80", overlay: "#f9eadc", opacity: ".62", sunX: "150", sunY: "150", label: "DAWN" },
+        morning: { sky: "#fff0c9", glow: "#ffd36a", overlay: "#fff8e8", opacity: ".55", sunX: "240", sunY: "130", label: "MORNING" },
+        afternoon: { sky: "#f6f1e8", glow: "#e9c875", overlay: "#f7ead2", opacity: ".34", sunX: "300", sunY: "210", label: "AFTERNOON" },
+        sunset: { sky: "#e6a878", glow: "#d85d3f", overlay: "#f0bd87", opacity: ".72", sunX: "155", sunY: "385", label: "SUNSET" },
+        night: { sky: "#151a24", glow: "#5d6b98", overlay: "#303543", opacity: ".42", sunX: "720", sunY: "160", label: "NIGHT" }
       }[time];
       const rainLines = type === "rainy" ? Array.from({ length: 34 }).map((_, i) => {
         const x = (i * 37 + seed * 11) % 900;
@@ -429,9 +441,11 @@ const songLibrary = [
     }
     function renderScene() {
       timeOfDay = getTimeOfDay();
-      const src = generatedSceneUrl(weatherType, selectedMood, selectedGenre, imageSeed);
+      const timeSeed = imageSeed + comboHash(`${weatherType}-${timeOfDay}`);
+      const src = generatedSceneUrl(weatherType, selectedMood, selectedGenre, timeSeed);
       heroImage.src = src;
       resultImage.src = src;
+      if (typeof timeChip !== 'undefined') timeChip.textContent = `${timeLabel(timeOfDay)}氛圍`;
     }
     function renderChoices() {
       moodGrid.innerHTML = moods.map(m => `<button class='choice ${m === selectedMood ? "active" : ""}' data-mood='${m}'><div class='doodle'>${moodSvg(m)}</div><div class='mood-label'>${m}</div></button>`).join("");
@@ -652,6 +666,7 @@ const songLibrary = [
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
     renderChoices(); renderScene(); fetchWeather(); recommendBtn.onclick = renderRecommendations; backBtn.onclick = goHome;
+    setInterval(renderScene, 60000);
   </script>
 </body>
 </html>
