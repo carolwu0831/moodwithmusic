@@ -469,7 +469,28 @@ const songLibrary = [
       }
       return {};
     }
+    function stopAllAudio() {
+      document.querySelectorAll('audio').forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+    }
+
+    function bindExclusiveAudioPlayback() {
+      document.querySelectorAll('audio').forEach(audio => {
+        audio.addEventListener('play', () => {
+          document.querySelectorAll('audio').forEach(otherAudio => {
+            if (otherAudio !== audio) {
+              otherAudio.pause();
+              otherAudio.currentTime = 0;
+            }
+          });
+        });
+      });
+    }
+
     async function renderRecommendations() {
+      stopAllAudio();
       imageSeed += comboHash(`${selectedGenre}-${selectedMood}-${weatherType}`) % 53 + 7;
       renderScene();
       const songs = getRecommendations();
@@ -556,6 +577,7 @@ const songLibrary = [
         div.appendChild(info);
         resultArea.appendChild(div);
       }
+      bindExclusiveAudioPlayback();
     }
     async function fetchWeather() {
       try {
@@ -565,6 +587,7 @@ const songLibrary = [
       } catch { temp.textContent = '27°'; weatherText.textContent = '多雲時陰'; feels.textContent = '體感 29°C'; humidity.textContent = '78%'; wind.textContent = '9'; rain.textContent = '0 mm'; }
     }
     function goHome() {
+      stopAllAudio();
       resultSection.classList.add('hidden');
       homePage.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'auto' });
