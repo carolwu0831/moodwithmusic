@@ -260,7 +260,9 @@
       暴躁: "讓那些快爆炸的情緒，被聲音慢慢吸收。", 焦慮: "不用立刻把自己整理好，先讓呼吸慢下來。"
     };
     const weatherCodeMap = { 0:"晴朗", 1:"大致晴朗", 2:"多雲時晴", 3:"多雲時陰", 45:"有霧", 48:"有霧", 51:"小毛毛雨", 53:"毛毛雨", 55:"大毛毛雨", 61:"小雨", 63:"中雨", 65:"大雨", 80:"短暫陣雨", 81:"陣雨", 82:"強陣雨", 95:"雷雨" };
-    const songLibrary = [
+    const recommendationHistory = new Map();
+
+const songLibrary = [
       ["The Night We Met","Lord Huron","EN",["Indie","Acoustic"],["平靜","難過","無感","焦慮"],["cloudy","rainy"],"03:28"],
       ["好不容易","告五人","中文",["Mandopop","Indie"],["難過","疲憊","無感"],["cloudy","rainy"],"04:32"],
       ["I Like Me Better","Lauv","EN",["Pop"],["開心","放鬆"],["sunny","cloudy"],"03:17"],
@@ -383,25 +385,53 @@
     function getRecommendations() {
       const mapped = genreAliases[selectedGenre] || [selectedGenre];
       const languageFilter = selectedGenre === "英文流行" ? "EN" : selectedGenre === "華語流行" ? "中文" : null;
-      const hash = comboHash(`${selectedGenre}-${selectedMood}-${weatherType}-${imageSeed}`);
+      const comboKey = `${selectedGenre}-${selectedMood}-${weatherType}`;
+      const previousSongs = recommendationHistory.get(comboKey) || [];
+      const hash = comboHash(`${comboKey}-${Date.now() % 100000}`);
+
       const ranked = songLibrary
-      .filter(s => !languageFilter || s.lang === languageFilter)
-      .map((s,i)=>{
-        const inferredGenres = getSongGenres(s);
-        let score = 0;
-        if (selectedGenre === "All") score += 2;
-        if (mapped.some(g => inferredGenres.includes(g))) score += 12;
-        if (s.moods.includes(selectedMood)) score += 9;
-        if (s.weather.includes(weatherType)) score += 4;
-        if (s.lang === "中文") score += .35;
-        score += ((hash + i * 73) % 1000) / 100;
-        return {...s, score};
-      }).filter(s => {
-        const inferredGenres = getSongGenres(s);
-        return selectedGenre === "All" || mapped.some(g => inferredGenres.includes(g)) || (s.moods.includes(selectedMood) && !languageFilter);
-      }).sort((a,b)=>b.score-a.score);
-      const picked=[], artists=new Set();
-      for (const s of ranked) { if (picked.length===3) break; if (artists.has(s.artist)) continue; picked.push(s); artists.add(s.artist); }
+        .filter(song => {
+          if (languageFilter && song.lang !== languageFilter) return false;
+          return true;
+        })
+        .map((song, index) => {
+          const inferredGenres = getSongGenres(song);
+          let score = 0;
+
+          if (selectedGenre === "All") score += 1;
+          if (mapped.some(g => inferredGenres.includes(g))) score += 14;
+          if (song.moods.includes(selectedMood)) score += 8;
+          if (song.weather.includes(weatherType)) score += 4;
+
+          if (previousSongs.includes(song.title)) score -= 18;
+
+          score += ((hash + index * 91) % 1000) / 100;
+
+          return {
+            ...song,
+            inferredGenres,
+            score,
+          };
+        })
+        .filter(song => {
+          if (selectedGenre === "All") return true;
+          return mapped.some(g => song.inferredGenres.includes(g));
+        })
+        .sort((a, b) => b.score - a.score);
+
+      const picked = [];
+      const artists = new Set();
+
+      for (const song of ranked) {
+        if (picked.length >= 3) break;
+        if (artists.has(song.artist)) continue;
+
+        picked.push(song);
+        artists.add(song.artist);
+      }
+
+      recommendationHistory.set(comboKey, picked.map(song => song.title));
+
       return picked;
     }
     async function fetchMeta(song) {
@@ -483,7 +513,13 @@
           const audio = document.createElement('audio');
           audio.controls = true;
           audio.preload = 'none';
+          audio.playsInline = true;
+          audio.crossOrigin = 'anonymous';
           audio.src = meta.preview;
+          audio.addEventListener('loadeddata', () => {
+            audio.style.display = 'block';
+          });
+
           audio.addEventListener('error', () => {
             audio.remove();
             const note = document.createElement('div');
