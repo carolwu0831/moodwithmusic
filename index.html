@@ -286,11 +286,22 @@ const songLibrary = [
       ["Fly Me to the Moon","Frank Sinatra","EN",["Jazz"],["放鬆","開心"],["sunny","cloudy"],"02:28"],
       ["Nujabes - Feather","Nujabes","EN",["Hip Hop","Lo-fi"],["平靜","放鬆"],["sunny","cloudy"],"02:55"]
     ].map(([title, artist, lang, genres, moods, weather, duration]) => ({ title, artist, lang, genres, moods, weather, duration }));
-    let selectedMood = "平靜", selectedGenre = "All", weatherType = "cloudy", imageSeed = 417;
+    let selectedMood = "平靜", selectedGenre = "All", weatherType = "cloudy", timeOfDay = "afternoon", imageSeed = 417;
 
     function comboHash(text) { let h = 0; for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 9973; return h; }
     function classifyWeather(code) { return [51,53,55,61,63,65,80,81,82,95].includes(code) ? "rainy" : [2,3,45,48].includes(code) ? "cloudy" : "sunny"; }
     function weatherIcon(type) { return type === "rainy" ? "☔" : type === "sunny" ? "☀" : "☁"; }
+    function getTimeOfDay(date = new Date()) {
+      const hour = date.getHours();
+      if (hour >= 5 && hour < 8) return "dawn";
+      if (hour >= 8 && hour < 12) return "morning";
+      if (hour >= 12 && hour < 17) return "afternoon";
+      if (hour >= 17 && hour < 19) return "sunset";
+      return "night";
+    }
+    function timeLabel(type) {
+      return ({ dawn: "清晨", morning: "上午", afternoon: "午後", sunset: "傍晚", night: "夜晚" })[type] || "午後";
+    }
     function musicSearchUrl(song) { return `https://music.apple.com/search?term=${encodeURIComponent(song.title + " " + song.artist)}`; }
     function youtubeSearchUrl(song) { return `https://www.youtube.com/results?search_query=${encodeURIComponent(song.title + " " + song.artist + " official audio")}`; }
     function generatedAlbumCover(song) {
@@ -369,11 +380,59 @@ const songLibrary = [
       return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     }
     function generatedSceneUrl(type, mood, genre, seed) {
-      const p = { sunny:["#f8f0df","#4f5636","#8d7a55","#f6d58a"], cloudy:["#f6f1e8","#3f4938","#786f5c","#d5c4b2"], rainy:["#f0ece4","#334038","#5f625b","#c9c1b6"] }[type];
-      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 1400'><filter id='g'><feTurbulence baseFrequency='.9' numOctaves='4' seed='${seed}'/><feComponentTransfer><feFuncA type='table' tableValues='0 .16'/></feComponentTransfer></filter><rect width='900' height='1400' fill='${p[0]}'/><circle cx='220' cy='180' r='430' fill='${p[3]}' opacity='.35'/><path d='M0 430 C120 330 200 430 310 340 C430 240 520 400 640 310 C760 230 820 360 900 300 L900 680 L0 680 Z' fill='${p[1]}'/><rect y='650' width='900' height='360' fill='${p[2]}'/><path d='M0 990 C160 930 320 980 450 945 C610 905 735 960 900 905 L900 1400 L0 1400 Z' fill='#ead9bd'/><g transform='translate(500 905)'><ellipse cx='0' cy='100' rx='185' ry='28' fill='#8a7659' opacity='.2'/><g transform='translate(-35 0)'><circle r='28' fill='#2b2825'/><path d='M-30 33 C-50 80 -35 127 -8 150 C20 124 30 80 16 34 Z' fill='#8c5f49'/></g><g transform='translate(55 -16)'><circle r='31' fill='#4b3728'/><path d='M-24 38 C-42 91 -18 139 23 154 C57 118 64 71 31 34 Z' fill='#2d3551'/></g></g><text x='86' y='795' transform='rotate(90 86 795)' font-family='monospace' font-size='34' fill='#d86f2e' opacity='.72'>22 06 25</text><text x='64' y='1320' font-family='system-ui' font-size='28' fill='#7d6e5e' opacity='.35'>${mood} · ${genre}</text><rect width='900' height='1400' filter='url(#g)' opacity='.42'/></svg>`;
+      const time = timeOfDay;
+      const weatherPalette = {
+        sunny: { tree: "#4f5636", lake: "#8d7a55", sand: "#ead9bd", stamp: "#d86f2e" },
+        cloudy: { tree: "#3f4938", lake: "#786f5c", sand: "#e2d5bf", stamp: "#b97742" },
+        rainy: { tree: "#334038", lake: "#5f625b", sand: "#d2c7b9", stamp: "#a7644b" }
+      }[type];
+      const timePalette = {
+        dawn: { sky: "#f5dfcf", glow: "#f3b98f", overlay: "#f7efe5", opacity: ".42", sunX: "170", sunY: "170", label: "DAWN" },
+        morning: { sky: "#f8f0df", glow: "#f6d58a", overlay: "#fff6e8", opacity: ".35", sunX: "230", sunY: "145", label: "MORNING" },
+        afternoon: { sky: "#f6f1e8", glow: "#e9c875", overlay: "#f7ead2", opacity: ".30", sunX: "270", sunY: "185", label: "AFTERNOON" },
+        sunset: { sky: "#ead0b0", glow: "#d88453", overlay: "#f1c08d", opacity: ".48", sunX: "170", sunY: "360", label: "SUNSET" },
+        night: { sky: "#202731", glow: "#747d93", overlay: "#c7c3b7", opacity: ".22", sunX: "720", sunY: "160", label: "NIGHT" }
+      }[time];
+      const rainLines = type === "rainy" ? Array.from({ length: 34 }).map((_, i) => {
+        const x = (i * 37 + seed * 11) % 900;
+        const y = 80 + ((i * 59 + seed) % 760);
+        return `<path d='M${x} ${y} L${x - 22} ${y + 54}' stroke='#f4efe6' stroke-width='2' opacity='.23'/>`;
+      }).join("") : "";
+      const clouds = type === "cloudy" || type === "rainy" ? `<g opacity='${type === "rainy" ? ".38" : ".28"}'><ellipse cx='180' cy='180' rx='120' ry='42' fill='#fff8ed'/><ellipse cx='280' cy='160' rx='150' ry='54' fill='#fff8ed'/><ellipse cx='650' cy='235' rx='180' ry='50' fill='#fff8ed'/></g>` : "";
+      const stars = time === "night" ? Array.from({ length: 26 }).map((_, i) => {
+        const x = (i * 73 + seed * 5) % 860 + 20;
+        const y = (i * 41 + seed * 9) % 360 + 40;
+        return `<circle cx='${x}' cy='${y}' r='${1 + (i % 2)}' fill='#f6ead4' opacity='.65'/>`;
+      }).join("") : "";
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 1400'>
+        <defs>
+          <filter id='g'><feTurbulence baseFrequency='.9' numOctaves='4' seed='${seed}'/><feComponentTransfer><feFuncA type='table' tableValues='0 .16'/></feComponentTransfer></filter>
+          <linearGradient id='sky' x1='0' y1='0' x2='0' y2='1'><stop stop-color='${timePalette.sky}'/><stop offset='.62' stop-color='${timePalette.overlay}'/><stop offset='1' stop-color='${weatherPalette.sand}'/></linearGradient>
+          <radialGradient id='sun' cx='${timePalette.sunX}' cy='${timePalette.sunY}' r='520' gradientUnits='userSpaceOnUse'><stop stop-color='${timePalette.glow}' stop-opacity='${timePalette.opacity}'/><stop offset='1' stop-color='${timePalette.glow}' stop-opacity='0'/></radialGradient>
+        </defs>
+        <rect width='900' height='1400' fill='url(#sky)'/>
+        <rect width='900' height='1400' fill='url(#sun)'/>
+        ${stars}
+        ${clouds}
+        <path d='M0 430 C120 330 200 430 310 340 C430 240 520 400 640 310 C760 230 820 360 900 300 L900 680 L0 680 Z' fill='${weatherPalette.tree}' opacity='${time === "night" ? ".78" : "1"}'/>
+        <path d='M0 510 C100 430 170 500 250 420 C350 315 420 485 520 390 C650 280 700 470 820 360 C860 325 880 330 900 315 L900 690 L0 690 Z' fill='${weatherPalette.tree}' opacity='.58'/>
+        <rect y='650' width='900' height='360' fill='${weatherPalette.lake}' opacity='${time === "night" ? ".86" : "1"}'/>
+        <g opacity='.26'>${Array.from({ length: 16 }).map((_, i) => `<path d='M${(i * 61 + seed) % 600} ${700 + i * 16} C${120 + i * 12} ${690 + i * 16} ${260 + i * 20} ${714 + i * 16} ${520 + i * 18} ${702 + i * 16}' stroke='#fff3dd' stroke-width='${1 + (i % 3)}' fill='none'/>`).join("")}</g>
+        ${rainLines}
+        <path d='M0 990 C160 930 320 980 450 945 C610 905 735 960 900 905 L900 1400 L0 1400 Z' fill='${weatherPalette.sand}'/>
+        <g transform='translate(500 905)'><ellipse cx='0' cy='100' rx='185' ry='28' fill='#8a7659' opacity='.2'/><g transform='translate(-35 0)'><circle r='28' fill='${time === "night" ? "#1b1d22" : "#2b2825"}'/><path d='M-30 33 C-50 80 -35 127 -8 150 C20 124 30 80 16 34 Z' fill='#8c5f49'/></g><g transform='translate(55 -16)'><circle r='31' fill='#4b3728'/><path d='M-24 38 C-42 91 -18 139 23 154 C57 118 64 71 31 34 Z' fill='#2d3551'/></g></g>
+        <text x='86' y='795' transform='rotate(90 86 795)' font-family='monospace' font-size='34' fill='${weatherPalette.stamp}' opacity='.72'>${timePalette.label}</text>
+        <text x='64' y='1320' font-family='system-ui' font-size='28' fill='#7d6e5e' opacity='.35'>${mood} · ${genre} · ${timeLabel(time)}</text>
+        <rect width='900' height='1400' filter='url(#g)' opacity='.42'/>
+      </svg>`;
       return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     }
-    function renderScene() { const src = generatedSceneUrl(weatherType, selectedMood, selectedGenre, imageSeed); heroImage.src = src; resultImage.src = src; }
+    function renderScene() {
+      timeOfDay = getTimeOfDay();
+      const src = generatedSceneUrl(weatherType, selectedMood, selectedGenre, imageSeed);
+      heroImage.src = src;
+      resultImage.src = src;
+    }
     function renderChoices() {
       moodGrid.innerHTML = moods.map(m => `<button class='choice ${m === selectedMood ? "active" : ""}' data-mood='${m}'><div class='doodle'>${moodSvg(m)}</div><div class='mood-label'>${m}</div></button>`).join("");
       genreGrid.innerHTML = genres.map(g => `<button class='choice genre ${g === selectedGenre ? "active" : ""}' data-genre='${g}'><div class='genre-icon'>${genreEmoji(g)}</div><div class='choice-label'>${g}</div></button>`).join("");
@@ -583,7 +642,7 @@ const songLibrary = [
       try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${WENSHAN.latitude}&longitude=${WENSHAN.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&timezone=Asia%2FTaipei`);
         const data = await res.json(); const w = data.current;
-        weatherType = classifyWeather(w.weather_code); temp.textContent = Math.round(w.temperature_2m) + '°'; weatherIcon.textContent = window.weatherIcon(weatherType); weatherText.textContent = weatherCodeMap[w.weather_code] || '天氣資訊'; feels.textContent = '體感 ' + Math.round(w.apparent_temperature) + '°C'; humidity.textContent = w.relative_humidity_2m + '%'; wind.textContent = w.wind_speed_10m; rain.textContent = w.precipitation + ' mm'; renderScene();
+        weatherType = classifyWeather(w.weather_code); timeOfDay = getTimeOfDay(); temp.textContent = Math.round(w.temperature_2m) + '°'; weatherIcon.textContent = window.weatherIcon(weatherType); weatherText.textContent = weatherCodeMap[w.weather_code] || '天氣資訊'; feels.textContent = '體感 ' + Math.round(w.apparent_temperature) + '°C'; humidity.textContent = w.relative_humidity_2m + '%'; wind.textContent = w.wind_speed_10m; rain.textContent = w.precipitation + ' mm'; renderScene();
       } catch { temp.textContent = '27°'; weatherText.textContent = '多雲時陰'; feels.textContent = '體感 29°C'; humidity.textContent = '78%'; wind.textContent = '9'; rain.textContent = '0 mm'; }
     }
     function goHome() {
