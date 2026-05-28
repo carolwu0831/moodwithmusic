@@ -382,8 +382,11 @@
     function moodSvg(m) { const map={平靜:"M24 25 L24 50 M14 36 L34 36 M24 50 L16 68 M24 50 L32 68",放鬆:"M25 28 C18 38 16 47 24 54 M24 40 C14 42 12 50 20 54 M28 38 C38 39 42 45 39 52",開心:"M24 26 L24 51 M13 34 L24 24 L35 34 M24 51 L15 68 M24 51 L33 68",難過:"M25 28 C17 39 17 54 28 60 M22 42 C15 47 14 55 19 61",疲憊:"M24 27 C21 39 22 50 26 60 M20 43 L14 58 M28 43 L34 58",無感:"M24 28 L24 53 M16 40 L32 40 M24 53 L18 68 M24 53 L31 68",暴躁:"M24 27 L24 51 M13 40 L23 32 M25 32 L37 39 M24 51 L14 68 M24 51 L35 68",焦慮:"M24 27 C18 36 17 48 24 56 M18 39 L11 52 M29 38 L37 48"}; return `<svg viewBox='0 0 48 78' preserveAspectRatio='xMidYMid meet' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'><circle cx='24' cy='24' r='7'/><path d='${map[m]}'/></svg>`; }
     function getRecommendations() {
       const mapped = genreAliases[selectedGenre] || [selectedGenre];
+      const languageFilter = selectedGenre === "英文流行" ? "EN" : selectedGenre === "華語流行" ? "中文" : null;
       const hash = comboHash(`${selectedGenre}-${selectedMood}-${weatherType}-${imageSeed}`);
-      const ranked = songLibrary.map((s,i)=>{
+      const ranked = songLibrary
+      .filter(s => !languageFilter || s.lang === languageFilter)
+      .map((s,i)=>{
         const inferredGenres = getSongGenres(s);
         let score = 0;
         if (selectedGenre === "All") score += 2;
@@ -395,7 +398,7 @@
         return {...s, score};
       }).filter(s => {
         const inferredGenres = getSongGenres(s);
-        return selectedGenre === "All" || mapped.some(g => inferredGenres.includes(g)) || s.moods.includes(selectedMood);
+        return selectedGenre === "All" || mapped.some(g => inferredGenres.includes(g)) || (s.moods.includes(selectedMood) && !languageFilter);
       }).sort((a,b)=>b.score-a.score);
       const picked=[], artists=new Set();
       for (const s of ranked) { if (picked.length===3) break; if (artists.has(s.artist)) continue; picked.push(s); artists.add(s.artist); }
