@@ -109,7 +109,7 @@
       padding: 12px;
       box-shadow: 0 8px 20px rgba(60,48,34,.12);
       backdrop-filter: blur(6px);
-      animation: fadeUp .45s ease both;
+      animation: fadeUp .22s ease both;
     }
     .art { width: 56px; height: 56px; border-radius: 9px; object-fit: cover; background: #ddd4c8; }
     .art-fallback {
@@ -395,7 +395,7 @@
         const meta = await fetchMeta(song);
         const div = document.createElement('article');
         div.className = 'song-card';
-        div.style.animationDelay = `${i*.08}s`;
+        div.style.animationDelay = `${i*.02}s`;
 
         const img = document.createElement('img');
         img.className = 'art';
